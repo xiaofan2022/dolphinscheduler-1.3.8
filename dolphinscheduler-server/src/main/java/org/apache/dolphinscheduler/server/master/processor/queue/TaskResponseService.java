@@ -21,6 +21,7 @@ import io.netty.channel.Channel;
 import org.apache.dolphinscheduler.common.enums.Event;
 import org.apache.dolphinscheduler.common.enums.ExecutionStatus;
 import org.apache.dolphinscheduler.common.thread.Stopper;
+import org.apache.dolphinscheduler.dao.entity.ProcessInstance;
 import org.apache.dolphinscheduler.dao.entity.TaskInstance;
 import org.apache.dolphinscheduler.remote.command.DBTaskAckCommand;
 import org.apache.dolphinscheduler.remote.command.DBTaskResponseCommand;
@@ -161,6 +162,10 @@ public class TaskResponseService {
                                 taskResponseEvent.getProcessId(),
                                 taskResponseEvent.getAppIds(),
                                 taskResponseEvent.getTaskInstanceId());
+                        ProcessInstance processInstance = processService.findProcessInstanceById(taskInstance.getProcessInstanceId());
+                        processInstance.setGlobalParams(taskResponseEvent.getVarPool());
+                        logger.warn("修改全局变量成功,修改前:{},修改后:{}",processInstance.getGlobalParams(),taskResponseEvent.getVarPool());
+                        processService.saveProcessInstance(processInstance);
                     }
                     // if taskInstance is null (maybe deleted) . retry will be meaningless . so response success
                     DBTaskResponseCommand taskResponseCommand = new DBTaskResponseCommand(ExecutionStatus.SUCCESS.getCode(),taskResponseEvent.getTaskInstanceId());

@@ -24,12 +24,12 @@ import static org.apache.dolphinscheduler.common.Constants.STATUS;
 import static org.apache.dolphinscheduler.common.Constants.USER;
 import static org.apache.dolphinscheduler.common.enums.DbType.HIVE;
 
+import com.alibaba.fastjson.JSON;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.dolphinscheduler.alert.utils.MailUtils;
 import org.apache.dolphinscheduler.common.Constants;
-import org.apache.dolphinscheduler.common.enums.CommandType;
-import org.apache.dolphinscheduler.common.enums.DbType;
-import org.apache.dolphinscheduler.common.enums.ShowType;
-import org.apache.dolphinscheduler.common.enums.TaskTimeoutStrategy;
+import org.apache.dolphinscheduler.common.enums.*;
 import org.apache.dolphinscheduler.common.process.Property;
 import org.apache.dolphinscheduler.common.task.AbstractParameters;
 import org.apache.dolphinscheduler.common.task.sql.SqlBinds;
@@ -61,12 +61,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -88,6 +83,7 @@ public class SqlTask extends AbstractTask {
      *  alert dao
      */
     private AlertDao alertDao;
+
     /**
      * base datasource
      */
@@ -250,8 +246,9 @@ public class SqlTask extends AbstractTask {
             if (sqlParameters.getSqlType() == SqlType.QUERY.ordinal()) {
                 // query statements need to be convert to JsonArray and inserted into Alert to send
                 resultSet = stmt.executeQuery();
-                resultProcess(resultSet);
-
+                String result = resultProcess(resultSet);
+                List<Property> varPool = dealOutParam(result, sqlParameters.getLocalParams(), taskExecutionContext.getGlobalParams());
+                taskExecutionContext.setVarPool(JSONUtils.toJsonString(varPool));
             } else if (sqlParameters.getSqlType() == SqlType.NON_QUERY.ordinal()) {
                 // non query statement
                 stmt.executeUpdate();
@@ -273,7 +270,7 @@ public class SqlTask extends AbstractTask {
      * @param resultSet resultSet
      * @throws Exception
      */
-    private void resultProcess(ResultSet resultSet) throws Exception{
+    private String resultProcess(ResultSet resultSet) throws Exception{
         JSONArray resultJSONArray = new JSONArray();
         ResultSetMetaData md = resultSet.getMetaData();
         int num = md.getColumnCount();
@@ -303,6 +300,7 @@ public class SqlTask extends AbstractTask {
             sendAttachment(StringUtils.isNotEmpty(sqlParameters.getTitle()) ? sqlParameters.getTitle() : taskExecutionContext.getTaskName() + " query result sets",
                     JSONUtils.toJsonString(resultJSONArray));
         }
+        return  result;
     }
 
     /**
@@ -541,4 +539,78 @@ public class SqlTask extends AbstractTask {
         }
         logger.info("Sql Params are {}", logPrint);
     }
+
+    public List<Property> dealOutParam(String result,List<Property> localParams,String globalParams) {
+        List<Property> globalParamsList = JSON.parseArray(globalParams, Property.class);
+        if (org.apache.commons.collections4.CollectionUtils.isEmpty(localParams)) {
+            return globalParamsList;
+        }
+        List<Property> outProperty = getOutProperty(localParams);
+        if (org.apache.commons.collections4.CollectionUtils.isEmpty(outProperty)) {
+            return globalParamsList;
+        }
+        if (StringUtils.isEmpty(result)) {
+            return globalParamsList;
+        }
+        List<Map<String, String>> sqlResult = getListMapByString(result);
+        if (org.apache.commons.collections4.CollectionUtils.isEmpty(sqlResult)) {
+            return globalParamsList;
+        }
+        // if sql return more than one line
+        if (sqlResult.size() > 1) {
+            Map<String, List<String>> sqlResultFormat = new HashMap<>();
+            // init sqlResultFormat
+            Set<String> keySet = sqlResult.get(0).keySet();
+            for (String key : keySet) {
+                sqlResultFormat.put(key, new ArrayList<>());
+            }
+            for (Map<String, String> info : sqlResult) {
+                for (String key : info.keySet()) {
+                    sqlResultFormat.get(key).add(String.valueOf(info.get(key)));
+                }
+            }
+ /*           for (Property info : outProperty) {
+                if (info.getType() == DataType.LIST) {
+                    info.setValue(JSONUtils.toJsonString(sqlResultFormat.get(info.getProp())));
+                    varPool.add(info);
+                }
+            }*/
+        } else {
+            // result only one line
+            Map<String, String> firstRow = sqlResult.get(0);
+            for (Property info : outProperty) {
+                info.setValue(String.valueOf(firstRow.get(info.getProp())));
+                //varPool.add(info);
+                globalParamsList.stream().filter(t->t.getProp().equals(info.getProp()))
+                        .forEach(t->{
+                            t.setValue(info.getValue());
+                        });
+
+            }
+        }
+        return globalParamsList;
+    }
+    public List<Property> getOutProperty(List<Property> params) {
+        if (org.apache.commons.collections4.CollectionUtils.isEmpty(params)) {
+            return new ArrayList<>();
+        }
+        List<Property> result = new ArrayList<>();
+        for (Property info : params) {
+            if (info.getDirect() == Direct.OUT) {
+                result.add(info);
+            }
+        }
+        return result;
+    }
+
+    public List<Map<String, String>> getListMapByString(String json) {
+        List<Map<String, String>> allParams = new ArrayList<>();
+        JSONArray paramsByJson = JSONUtils.parseArray(json);
+        for (Object jsonNode : paramsByJson) {
+            Map<String, String> param = JSONUtils.toMap(jsonNode.toString());
+            allParams.add(param);
+        }
+        return allParams;
+    }
+
 }

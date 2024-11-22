@@ -83,6 +83,35 @@ public class TaskResponseEvent {
      */
     private Channel channel;
 
+    /**
+     * varPool string
+     */
+    private String varPool;
+    @Override
+    public String toString() {
+        return "TaskResponseEvent{" +
+                "taskInstanceId=" + taskInstanceId +
+                ", workerAddress='" + workerAddress + '\'' +
+                ", state=" + state +
+                ", startTime=" + startTime +
+                ", endTime=" + endTime +
+                ", executePath='" + executePath + '\'' +
+                ", logPath='" + logPath + '\'' +
+                ", processId=" + processId +
+                ", appIds='" + appIds + '\'' +
+                ", event=" + event +
+                ", channel=" + channel +
+                '}';
+    }
+
+    public String getVarPool() {
+        return varPool;
+    }
+
+    public void setVarPool(String varPool) {
+        this.varPool = varPool;
+    }
+
     public static TaskResponseEvent newAck(ExecutionStatus state,
                                            Date startTime,
                                            String workerAddress,
@@ -107,7 +136,8 @@ public class TaskResponseEvent {
                                               int processId,
                                               String appIds,
                                               int taskInstanceId,
-                                              Channel channel){
+                                              Channel channel,
+                                              String varPool){
         TaskResponseEvent event = new TaskResponseEvent();
         event.setState(state);
         event.setEndTime(endTime);
@@ -116,6 +146,7 @@ public class TaskResponseEvent {
         event.setTaskInstanceId(taskInstanceId);
         event.setEvent(Event.RESULT);
         event.setChannel(channel);
+        event.setVarPool(varPool);
         return event;
     }
 

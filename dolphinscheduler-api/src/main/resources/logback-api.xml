@@ -61,6 +61,8 @@
     <root level="INFO">
         <appender-ref ref="APILOGFILE"/>
         <appender-ref ref="SKYWALKING-LOG"/>
+        <appender-ref ref="STDOUT"/>
+
     </root>
 
 </configuration>

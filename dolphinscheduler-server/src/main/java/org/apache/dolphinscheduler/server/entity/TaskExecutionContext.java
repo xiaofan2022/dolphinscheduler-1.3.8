@@ -98,7 +98,10 @@ public class TaskExecutionContext implements Serializable{
      */
     private String globalParams;
 
-
+    /**
+     * taskInstance varPool
+     */
+    private String varPool;
     /**
      *  execute user id
      */
@@ -196,7 +199,6 @@ public class TaskExecutionContext implements Serializable{
      * business param
      */
     private Map<String, Property> paramsMap;
-
     public Map<String, Property> getParamsMap() {
         return paramsMap;
     }
@@ -472,6 +474,14 @@ public class TaskExecutionContext implements Serializable{
         this.sqoopTaskExecutionContext = sqoopTaskExecutionContext;
     }
 
+    public String getVarPool() {
+        return varPool;
+    }
+
+    public void setVarPool(String varPool) {
+        this.varPool = varPool;
+    }
+
     @Override
     public String toString() {
         return "TaskExecutionContext{" +
@@ -488,6 +498,7 @@ public class TaskExecutionContext implements Serializable{
                 ", processInstanceId=" + processInstanceId +
                 ", scheduleTime=" + scheduleTime +
                 ", globalParams='" + globalParams + '\'' +
+                ", varPool='" + varPool + '\'' +
                 ", executorId=" + executorId +
                 ", cmdTypeIfComplement=" + cmdTypeIfComplement +
                 ", tenantCode='" + tenantCode + '\'' +
@@ -506,6 +517,7 @@ public class TaskExecutionContext implements Serializable{
                 ", dataxTaskExecutionContext=" + dataxTaskExecutionContext +
                 ", dependenceTaskExecutionContext=" + dependenceTaskExecutionContext +
                 ", sqoopTaskExecutionContext=" + sqoopTaskExecutionContext +
+                ", paramsMap=" + paramsMap +
                 ", procedureTaskExecutionContext=" + procedureTaskExecutionContext +
                 '}';
     }
